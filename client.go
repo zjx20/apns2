@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"time"
 
 	"golang.org/x/net/http2"
 )
@@ -47,9 +49,18 @@ func NewClient(certificate tls.Certificate) *Client {
 	}
 	transport := &http2.Transport{
 		TLSClientConfig: tlsConfig,
+		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+			return tls.DialWithDialer(&net.Dialer{
+				Timeout:   5 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}, network, addr, cfg)
+		},
 	}
 	return &Client{
-		HTTPClient:  &http.Client{Transport: transport},
+		HTTPClient: &http.Client{
+			Transport: transport,
+			Timeout:   3 * time.Second,
+		},
 		Certificate: certificate,
 		Host:        DefaultHost,
 	}
